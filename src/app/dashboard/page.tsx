@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThumbsUp, Play, Pause, SkipForward, SkipBack } from "lucide-react";
 import Image from "next/image";
+import LiteYouTubeEmbed from 'react-lite-youtube-embed';
+import { YT_REGEX } from "@/lib/ytRegex";
 
 // const REFRESH_INTERVAL_MS = 10*1000;
 
@@ -24,6 +26,8 @@ export default function Dashboard() {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [newSongUrl, setNewSongUrl] = useState("");
+
+  const createrId = "da296102-e1c1-49cb-90aa-78eeb7000cc2";
 
   async function refreshStream() {
     try {
@@ -53,21 +57,21 @@ export default function Dashboard() {
     refreshStream();
   }, []);
 
-  const addSong = () => {
-    console.log(newSongUrl);
-    // if (newSongUrl) {
-    //   const videoId = newSongUrl.split("v=")[1]
-    //   const newSong: Song = {
-    //     id: Date.now().toString(),
-    //     title: `New Song ${queue.length + 1}`,
-    //     url: newSongUrl,
-    //     votes: 0,
-    //     thumbnailUrl: `https://img.youtube.com/vi/${videoId}/default.jpg`,
-    //     haveUpvoted: false
-    //   }
-    //   setQueue([...queue, newSong])
-    //   setNewSongUrl("")
-    // }
+  const addSong = async () => {
+    if(!newSongUrl) return;
+    const res = await axios.post("/api/streams", {
+      createrId,
+      url: newSongUrl
+    });
+    console.log(res.data);
+    setQueue([...queue, {
+      id: res.data.id,
+      title: res.data.title,
+      url: res.data.url,
+      votes: res.data.upvoteCount,
+      thumbnailUrl: res.data.bigImg,
+      haveUpvoted: res.data.haveUpvoted
+    }]);
   }
 
   const vote = async(id: string, hasVote: boolean) => {
@@ -155,20 +159,28 @@ export default function Dashboard() {
             <CardTitle className="text-xl sm:text-2xl text-violet-400">Add Song to Queue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-              <Input
-                type="text"
-                placeholder="Enter YouTube URL"
-                value={newSongUrl}
-                onChange={(e) => setNewSongUrl(e.target.value)}
-                className="bg-gray-700 text-gray-300 placeholder-gray-400 border-gray-600 flex-grow"
-              />
-              <Button 
-                onClick={addSong}
-                className="bg-violet-600 hover:bg-violet-700 text-white w-full sm:w-auto"
-              >
-                Add
-              </Button>
+            <div className="space-y-2">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                <Input
+                  type="text"
+                  placeholder="Enter YouTube URL"
+                  value={newSongUrl}
+                  onChange={(e) => setNewSongUrl(e.target.value)}
+                  className="bg-gray-700 text-gray-300 placeholder-gray-400 border-gray-600 flex-grow"
+                />
+                <Button 
+                  onClick={addSong}
+                  className="bg-violet-600 hover:bg-violet-700 text-white w-full sm:w-auto"
+                >
+                  Add
+                </Button>
+              </div>
+              {newSongUrl && newSongUrl.match(YT_REGEX) &&
+                <LiteYouTubeEmbed 
+                  title="" 
+                  id={newSongUrl.split("?v=")[1]}
+                />
+              }
             </div>
           </CardContent>
         </Card>

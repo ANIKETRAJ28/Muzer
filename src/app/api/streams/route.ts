@@ -4,9 +4,7 @@ import { z } from "zod";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error
 import youtubesearchapi from "youtube-search-api";
-
-const YT_REGEX = /^(?:(?:https?:)?\/\/)?(?:www\.)?(?:m\.)?(?:youtu(?:be)?\.com\/(?:v\/|embed\/|watch(?:\/|\?v=))|youtu\.be\/)((?:\w|-){11})(?:\S+)?$/;
-
+import { YT_REGEX } from "@/lib/ytRegex";
 
 const streamSchema = z.object({
     createrId: z.string(),
@@ -28,7 +26,7 @@ export async function POST(req: NextRequest) {
         const videoDetails = await youtubesearchapi.GetVideoDetails(exctractedId);
         const thumbnail = videoDetails.thumbnail.thumbnails;
         thumbnail.sort((a: {width: number}, b: {width: number}) => a.width < b.width ? -1 : 1);
-        await prismaClient.stream.create({
+        const streamData = await prismaClient.stream.create({
             data: {
                 userId: data.createrId,
                 url: data.url,
@@ -40,7 +38,9 @@ export async function POST(req: NextRequest) {
             }
         });
         return NextResponse.json({
-            message: "Stream added"
+            ...streamData,
+            haveUpvoted: false,
+            upvoteCount: 0
         });
     } catch (error) {
         console.log(error);
