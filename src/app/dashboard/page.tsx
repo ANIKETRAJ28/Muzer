@@ -22,10 +22,11 @@ type Song = {
 }
 
 export default function Dashboard() {
-  const [queue, setQueue] = useState<Song[]>([])
+  const [queue, setQueue] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [newSongUrl, setNewSongUrl] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const createrId = "da296102-e1c1-49cb-90aa-78eeb7000cc2";
 
@@ -33,7 +34,8 @@ export default function Dashboard() {
     try {
       const res = await axios.get("/api/streams/my");
       setQueue( 
-          res.data.streams.map((stream) => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          res.data.streams.map((stream: any) => ({
           id: stream.id,
           title: stream.title,
           url: stream.url,
@@ -57,13 +59,14 @@ export default function Dashboard() {
     refreshStream();
   }, []);
 
-  const addSong = async () => {
+  const addSong = async (e: React.FormEvent) => {
+    e.preventDefault();
     if(!newSongUrl) return;
+    setIsLoading(true);
     const res = await axios.post("/api/streams", {
       createrId,
       url: newSongUrl
     });
-    console.log(res.data);
     setQueue([...queue, {
       id: res.data.id,
       title: res.data.title,
@@ -72,6 +75,8 @@ export default function Dashboard() {
       thumbnailUrl: res.data.bigImg,
       haveUpvoted: res.data.haveUpvoted
     }]);
+    setIsLoading(false);
+    setNewSongUrl("");
   }
 
   const vote = async(id: string, hasVote: boolean) => {
@@ -170,9 +175,10 @@ export default function Dashboard() {
                 />
                 <Button 
                   onClick={addSong}
+                  disabled={isLoading}
                   className="bg-violet-600 hover:bg-violet-700 text-white w-full sm:w-auto"
                 >
-                  Add
+                  { isLoading ? "Loading..." : "Add"}
                 </Button>
               </div>
               {newSongUrl && newSongUrl.match(YT_REGEX) &&
@@ -198,7 +204,7 @@ export default function Dashboard() {
                     <div className="flex flex-col justify-between h-full">
                       <span className="font-medium text-gray-300 text-sm sm:text-base">{song.title}</span>
                       <div className="flex items-center space-x-2 mt-2">
-                        <Button variant="outline" size="sm" onClick={() => vote(song.id, song.haveUpvoted)} className={`${song.haveUpvoted ? "bg-violet-400 text-white" : "text-violet-400 border-violet-400"}`}>
+                        <Button variant="outline" size="sm" onClick={() => vote(song.id, song.haveUpvoted ?? true)} className={`${song.haveUpvoted ? "bg-violet-400 text-white" : "text-violet-400 border-violet-400"}`}>
                           <ThumbsUp className="h-4 w-4" />
                         </Button>
                         <span className="text-gray-300 min-w-[2ch] text-center">{song.votes}</span>
