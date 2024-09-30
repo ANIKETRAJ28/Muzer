@@ -5,6 +5,8 @@ import { z } from "zod";
 // @ts-expect-error
 import youtubesearchapi from "youtube-search-api";
 import { YT_REGEX } from "@/lib/ytRegex";
+import { getServerSession } from "next-auth";
+import NEXT_AUTH from "@/lib/nextAuth";
 
 const streamSchema = z.object({
     createrId: z.string(),
@@ -53,13 +55,42 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+    const session = await getServerSession(NEXT_AUTH);
+    const user = await prismaClient.user.findFirst({
+        where: {
+            userId: session.user.userId || "",
+        }
+    });
+    if(!user) {
+        return NextResponse.json({
+            message: "Unauthenticated"
+        }, {
+            status: 403
+        });
+    }
     const createrId = req.nextUrl.searchParams.get("createrId");
     const streams = await prismaClient.stream.findMany({
-        where: { 
-            userId: createrId || "" 
+        where: {
+            userId: createrId ?? ""
+        },
+        include: {
+            _count: {
+                select: {
+                    upvotes: true
+                }
+            },
+            upvotes: {
+                where: {
+                    userId: user.id
+                }
+            }
         }
     });
     return NextResponse.json({
-        streams
+        streams: streams.map(({_count, ...res}) => ({
+            ...res,
+            upvoteCount: _count.upvotes,
+            haveUpvoted: res.upvotes.length ? true : false
+        }))
     });
 }

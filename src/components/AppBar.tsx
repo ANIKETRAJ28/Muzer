@@ -8,9 +8,8 @@ import Image from "next/image";
 
 export const AppBar = () => {
     const session = useSession();
-    console.log(session.data);
     return (
-        <div className="px-4 lg:px-6 h-14 flex items-center justify-between">
+        <div className="bg-gray-900 text-gray-100 px-4 lg:px-6 h-14 flex items-center justify-between">
             <Link className="flex items-center justify-center" href="#">
                 <Music className="h-6 w-6 mr-2 text-violet-400" />
                 <span className="font-bold text-xl text-violet-400">MUZER</span>
@@ -21,7 +20,7 @@ export const AppBar = () => {
                     <div className="flex items-center space-x-2">
                         <span className="text-violet-400">{`Hii, ${session.data?.user?.name?.split(" ")[0]}`}</span>
                         <Image
-                            src="https://avatars.githubusercontent.com/u/133547782?v=4"
+                            src={session.data.user?.image ?? ""}
                             alt="User avatar"
                             width={32}
                             height={32}
