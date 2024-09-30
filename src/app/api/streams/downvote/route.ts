@@ -1,4 +1,5 @@
 import { prismaClient } from "@/lib/db";
+import NEXT_AUTH from "@/lib/nextAuth";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -8,10 +9,10 @@ const DownvoteSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-    const session = await getServerSession();
+    const session = await getServerSession(NEXT_AUTH);
     const user = await prismaClient.user.findFirst({
         where: {
-            email: session?.user?.email || ""
+            userId: session.user.userId || ""
         }
     });
     if(!user) {
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
                 }
             }
         });
+        return NextResponse.json({message: "done"});
     } catch (error) {
         return NextResponse.json({
             message: "Error while upvoting"
