@@ -5,7 +5,7 @@ import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ThumbsUp, Play, Pause, SkipForward, SkipBack } from "lucide-react";
+import { ThumbsUp, Play, Pause } from "lucide-react";
 import Image from "next/image";
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
 import { YT_REGEX } from "@/lib/ytRegex";
@@ -22,7 +22,7 @@ type Song = {
   haveUpvoted: boolean | null
 }
 
-export default function StreamView({ createrId }: { createrId: string }) {
+export default function StreamView({ createrId, page, playVideo = false }: { createrId: string, page: string, playVideo: boolean }) {
   const [queue, setQueue] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -31,7 +31,8 @@ export default function StreamView({ createrId }: { createrId: string }) {
 
   async function refreshStream() {
     try {
-      const res = await axios.get(`/api/streams?createrId=${createrId}`);
+      const res = await axios.get(`/api/streams?createrId=${createrId}&page=${page}`);
+      console.log(currentSong);
       setQueue( 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           res.data.streams.map((stream: any) => ({
@@ -43,6 +44,8 @@ export default function StreamView({ createrId }: { createrId: string }) {
           haveUpvoted: stream.haveUpvoted
         })).sort((a: Song, b: Song) => b.votes - a.votes)
       );
+      if(currentSong?.id === res.data.activeStream.streamId) return;
+      setCurrentSong(res.data.activeStream.stream);
     } catch (error) {
       console.log(error);
     }
@@ -117,22 +120,13 @@ export default function StreamView({ createrId }: { createrId: string }) {
     );
   }
 
-  const togglePlayPause = () => {
+  const togglePlayPause = async () => {
+    if(queue.length > 0) {
+      const res = await axios.get("/api/streams/nextSong");
+      console.log(res);
+      setCurrentSong(res.stream);
+    }
     setIsPlaying(!isPlaying)
-  }
-
-  const nextSong = () => {
-    const currentIndex = queue.findIndex((song) => song.id === currentSong?.id)
-    if (currentIndex < queue.length - 1) {
-      setCurrentSong(queue[currentIndex + 1])
-    }
-  }
-
-  const previousSong = () => {
-    const currentIndex = queue.findIndex((song) => song.id === currentSong?.id)
-    if (currentIndex > 0) {
-      setCurrentSong(queue[currentIndex - 1])
-    }
   }
 
   return (
@@ -154,27 +148,20 @@ export default function StreamView({ createrId }: { createrId: string }) {
             {currentSong ? (
               <div className="space-y-4">
                 <div className="aspect-video">
-                  <iframe
+                  {playVideo ? <iframe
                     width="100%"
                     height="100%"
-                    src={`https://www.youtube.com/embed/${currentSong.url.split("v=")[1]}`}
-                    title="YouTube video player"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe>
+                    src={`https://www.youtube.com/embed/${currentSong.id}?autoplay=1`}
+                    allow="autoplay"></iframe> : 
+                    <img src={currentSong.thumbnailUrl}/>
+                  }
                 </div>
                 <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
                   <h2 className="text-lg sm:text-xl font-semibold text-gray-300 text-center sm:text-left">{currentSong.title}</h2>
-                  <div className="flex space-x-2">
-                    <Button onClick={previousSong} className="bg-violet-600 hover:bg-violet-700 text-white">
-                      <SkipBack className="h-4 w-4" />
-                    </Button>
-                    <Button onClick={togglePlayPause} className="bg-violet-600 hover:bg-violet-700 text-white">
+                  <div>
+                    {playVideo && <Button onClick={togglePlayPause} className="bg-violet-600 hover:bg-violet-700 text-white">
                       {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    </Button>
-                    <Button onClick={nextSong} className="bg-violet-600 hover:bg-violet-700 text-white">
-                      <SkipForward className="h-4 w-4" />
-                    </Button>
+                    </Button>}
                   </div>
                 </div>
               </div>

@@ -69,9 +69,12 @@ export async function GET(req: NextRequest) {
         });
     }
     const createrId = req.nextUrl.searchParams.get("createrId");
-    const streams = await prismaClient.stream.findMany({
+    const page = req.nextUrl.searchParams.get("page");
+    if(page === "dashboard" && user.id !== createrId) return NextResponse.json({});
+    const [streams, activeStream] = await Promise.all([prismaClient.stream.findMany({
         where: {
-            userId: createrId ?? ""
+            userId: createrId ?? "",
+            played: false
         },
         include: {
             _count: {
@@ -85,12 +88,21 @@ export async function GET(req: NextRequest) {
                 }
             }
         }
-    });
+    }), prismaClient.currentStream.findFirst({
+        where: {
+            userId: createrId ?? "",
+        },
+        include: {
+            stream: true
+        }
+    })
+    ]);
     return NextResponse.json({
         streams: streams.map(({_count, ...res}) => ({
             ...res,
             upvoteCount: _count.upvotes,
             haveUpvoted: res.upvotes.length ? true : false
-        }))
+        })),
+        activeStream
     });
 }
